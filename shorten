@@ -1,0 +1,72 @@
+#!/usr/bin/env node
+
+const fetch     = require('node-fetch')
+const urlParser = require('url')
+
+const args = process.argv.slice(2)
+
+if (args.length != 1) {
+  console.log("Please provide a URL to shorten")
+  process.exit(1)
+}
+
+function shortenUrl(url) {
+  const endpointUrl = "http://localhost:9292/short_link"
+  const payload     = {long_url: url}
+
+  const operation = fetch(endpointUrl, {
+    headers: {"Content-Type": "application/json"},
+    method:  "post",
+    body:    JSON.stringify(payload)
+  })
+
+  return operation
+    .then((response) => {
+      return response.json().then((data) => {
+        if (response.ok) { return data.short_link }
+        throw new Error(`Error shortening URL: ${data.errors.long_url}`)
+      })
+    })
+}
+
+function getReportFor(url) {
+  const uri = urlParser.parse(url)
+  const endpointUrl = `http://localhost:9292${uri.path}+`
+
+  const operation = fetch(endpointUrl, {
+    headers: {"Content-Type": "application/json"}
+  })
+
+  return operation
+    .then(response => response.json())
+    .then(data => data)
+}
+
+shortenUrl(args[0])
+  .then((url) => {
+    console.log(`Shortened URL: ${url}`)
+    return getReportFor(url)
+  })
+  .then((report) => {
+    console.log("Accesses:")
+    console.log(report)
+  })
+  .catch(error => console.log(error.message))
+
+// Outputs:
+
+// Shortened URL: http://localhost:9292/iHdRzo
+// Accesses:
+// { response:
+//    [ { time: '2019-10-03T04:53:52.833Z',
+//        referrer: 'none',
+//        user_agent: 'curl/7.54.0' },
+//      { time: '2019-10-03T04:53:52.467Z',
+//        referrer: 'none',
+//        user_agent: 'curl/7.54.0' },
+//      { time: '2019-10-03T04:53:52.069Z',
+//        referrer: 'none',
+//        user_agent: 'curl/7.54.0' },
+//      { time: '2019-10-03T04:53:51.175Z',
+//        referrer: 'none',
+//        user_agent: 'curl/7.54.0' } ] }
